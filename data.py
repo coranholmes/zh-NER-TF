@@ -116,7 +116,7 @@ def random_embedding(vocab, embedding_dim):
 
 def pad_sequences(sequences, pad_mark=0):
     """
-
+    for a set of sentences, padding it to the max length of the sentences
     :param sequences:
     :param pad_mark:
     :return:
@@ -159,3 +159,15 @@ def batch_yield(data, batch_size, vocab, tag2label, shuffle=False):
     if len(seqs) != 0:
         yield seqs, labels
 
+
+def get_entity(tags, name):
+    entities = []
+    start = 0
+    for i, t in enumerate(tags):
+        if t == 'B-'+name or t == 'O':
+            if i > start and tags[start] == 'B-'+name:
+                entities.append((start, i))  # the entity is from start to i-1
+            start = i
+    if i > start and tags[start] == 'B-'+name:
+        entities.append((start, i+1))
+    return entities

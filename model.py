@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.contrib.rnn import LSTMCell
 from tensorflow.contrib.crf import crf_log_likelihood
 from tensorflow.contrib.crf import viterbi_decode
-from data import pad_sequences, batch_yield
+from data import pad_sequences, batch_yield, get_entity
 from utils import get_logger
 from eval import conlleval
 
@@ -196,11 +196,11 @@ class BiLSTM_CRF(object):
         :param saver:
         :return:
         """
-        num_batches = (len(train) + self.batch_size - 1) // self.batch_size
+        num_batches = (len(train) + self.batch_size - 1) // self.batch_size  # no. of batches
 
         start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         batches = batch_yield(train, self.batch_size, self.vocab, self.tag2label, shuffle=self.shuffle)
-        for step, (seqs, labels) in enumerate(batches):
+        for step, (seqs, labels) in enumerate(batches):  # step is the index of batch, seqs is the list of sentences
 
             sys.stdout.write(' processing: {} batch / {} batches.'.format(step + 1, num_batches) + '\r')
             step_num = epoch * num_batches + step + 1
@@ -214,7 +214,7 @@ class BiLSTM_CRF(object):
 
             self.file_writer.add_summary(summary, step_num)
 
-            if step + 1 == num_batches:
+            if step + 1 == num_batches:  # store results after last batch
                 saver.save(sess, self.model_path, global_step=step_num)
 
         self.logger.info('===========validation / test===========')
@@ -292,22 +292,29 @@ class BiLSTM_CRF(object):
         """
         label2tag = {}
         for tag, label in self.tag2label.items():
-            label2tag[label] = tag if label != 0 else label
+            label2tag[label] = tag #if label != 0 else label
 
-        model_predict = []
-        for label_, (sent, tag) in zip(label_list, data):
-            tag_ = [label2tag[label__] for label__ in label_]
-            sent_res = []
-            if  len(label_) != len(sent):
-                print(sent)
-                print(len(label_))
-                print(tag)
-            for i in range(len(sent)):
-                sent_res.append([sent[i], tag[i], tag_[i]])
-            model_predict.append(sent_res)
+        tag_cnt_crt, tag_cnt_pred, tag_cnt = 0, 0, 0
+
+        for name in ['LOC', 'ORG', 'PER']:
+            for label_, (sent, tag) in zip(label_list, data):
+                tag_ = [label2tag[label__] for label__ in label_]
+                tag_ = tag_[:len(sent)]
+                t_ent = set(get_entity(tag, name))
+                _t_ent = set(get_entity(tag_, name))
+                tag_cnt += len(t_ent)
+                tag_cnt_pred += len(_t_ent)
+                tag_cnt_crt += len(t_ent.intersection(_t_ent))
+
+            pre = tag_cnt_crt * 1.0 / tag_cnt_pred
+            rec = tag_cnt_crt * 1.0 / tag_cnt
+            f1 = 2 * pre * rec / (pre + rec)
+            print('{}:\tprecision:{};\trecall:{};\tF1:{};\ttag_cnt:{}.'.format(name, pre, rec, f1, tag_cnt))
+
         epoch_num = str(epoch+1) if epoch != None else 'test'
         label_path = os.path.join(self.result_path, 'label_' + epoch_num)
         metric_path = os.path.join(self.result_path, 'result_metric_' + epoch_num)
-        for _ in conlleval(model_predict, label_path, metric_path):
-            self.logger.info(_)
+        # for _ in conlleval(model_predict, label_path, metric_path):
+        #     self.logger.info(_)
+
 
