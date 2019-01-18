@@ -1,4 +1,4 @@
-import sys, pickle, os, random
+import sys, pickle, os, random, io, codecs
 import numpy as np
 
 ## tags, BIO
@@ -16,7 +16,7 @@ def read_corpus(corpus_path):
     :return: data
     """
     data = []
-    with open(corpus_path, encoding='utf-8') as fr:
+    with codecs.open(corpus_path, encoding='utf-8') as fr:
         lines = fr.readlines()
     sent_, tag_ = [], []
     for line in lines:

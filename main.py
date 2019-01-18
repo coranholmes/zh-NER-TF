@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import os, argparse, time, random
+import os, argparse, time, random, sys
 from model import BiLSTM_CRF
 from utils import str2bool, get_logger, get_entity
 from data import read_corpus, read_dictionary, tag2label, random_embedding
@@ -36,7 +36,7 @@ args = parser.parse_args()
 
 
 ## get char embeddings
-word2id = read_dictionary(os.path.join('.', args.train_data, 'word2id.pkl'))
+word2id = read_dictionary(os.path.join('.', args.train_data, 'word2id_py2.pkl'))
 if args.pretrain_embedding == 'random':
     embeddings = random_embedding(word2id, args.embedding_dim)
 else:
@@ -84,7 +84,7 @@ if args.mode == 'train':
     # model.train(train=train_data, dev=dev_data)
 
     ## train model on the whole training data
-    print("train data: {}".format(len(train_data)))
+    print("train data: {}".format(len(train_data)))  # no. of sentences
     model.train(train=train_data, dev=test_data)  # use test_data as the dev_data to see overfitting phenomena
 
 ## testing model
@@ -110,13 +110,15 @@ elif args.mode == 'demo':
         saver.restore(sess, ckpt_file)
         while(1):
             print('Please input your sentence:')
-            demo_sent = input()
+            demo_sent = sys.stdin.readline()
             if demo_sent == '' or demo_sent.isspace():
                 print('See you next time!')
                 break
             else:
-                demo_sent = list(demo_sent.strip())
+                demo_sent = list(demo_sent.decode('utf-8').strip())
                 demo_data = [(demo_sent, ['O'] * len(demo_sent))]
                 tag = model.demo_one(sess, demo_data)
                 PER, LOC, ORG = get_entity(tag, demo_sent)
-                print('PER: {}\nLOC: {}\nORG: {}'.format(PER, LOC, ORG))
+                res = 'PER: {}\nLOC: {}\nORG: {}'.format(PER, LOC, ORG)
+                res = res.replace('u\'', '\'')
+                print(res.decode("unicode-escape"))
