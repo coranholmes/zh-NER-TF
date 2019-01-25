@@ -2,11 +2,6 @@ import sys, pickle, os, random, io, codecs
 import numpy as np
 
 ## tags, BIO
-tag2label = {"O": 0,
-             "B-PER": 1, "I-PER": 2,
-             "B-LOC": 3, "I-LOC": 4,
-             "B-ORG": 5, "I-ORG": 6
-             }
 
 
 def read_corpus(corpus_path):
@@ -147,7 +142,12 @@ def batch_yield(data, batch_size, vocab, tag2label, shuffle=False):
     seqs, labels = [], []
     for (sent_, tag_) in data:
         sent_ = sentence2id(sent_, vocab)
-        label_ = [tag2label[tag] for tag in tag_]
+        label_ = []
+        for tag in tag_:
+            if tag2label.has_key(tag):
+                label_.append(tag2label[tag])
+            else:
+                label_.append(tag2label["O"])
 
         if len(seqs) == batch_size:
             yield seqs, labels

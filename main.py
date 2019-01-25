@@ -1,9 +1,9 @@
 import tensorflow as tf
 import numpy as np
-import os, argparse, time, random, sys
+import os, argparse, time, random, sys, pickle
 from model import BiLSTM_CRF
 from utils import str2bool, get_logger, get_entity
-from data import read_corpus, read_dictionary, tag2label, random_embedding
+from data import read_corpus, read_dictionary, random_embedding
 
 
 ## Session configuration
@@ -71,6 +71,8 @@ log_path = os.path.join(result_path, "log.txt")
 paths['log_path'] = log_path
 get_logger(log_path).info(str(args))
 
+with open('data_path/tag2label.pkl', 'rb') as fw:
+    tag2label = pickle.load(fw)
 
 ## training model
 if args.mode == 'train':
