@@ -4,5 +4,4 @@
 *.pyc
 __pycache__/
 data_path_save/
-data_path/original/
-data_path/zh/
+data_path/

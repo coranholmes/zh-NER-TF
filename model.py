@@ -6,25 +6,24 @@ from tensorflow.contrib.crf import crf_log_likelihood
 from tensorflow.contrib.crf import viterbi_decode
 from data import pad_sequences, batch_yield, get_entity
 from utils import get_logger
-from eval import conlleval
 
 
 class BiLSTM_CRF(object):
     def __init__(self, args, embeddings, tag2label, vocab, paths, config):
-        self.batch_size = args.batch_size
-        self.epoch_num = args.epoch
-        self.hidden_dim = args.hidden_dim
+        self.batch_size = args['BATCH_SIZE']
+        self.epoch_num = args['EPOCH']
+        self.hidden_dim = args['HIDDEN_DIM']
         self.embeddings = embeddings
-        self.CRF = args.CRF
-        self.update_embedding = args.update_embedding
-        self.dropout_keep_prob = args.dropout
-        self.optimizer = args.optimizer
-        self.lr = args.lr
-        self.clip_grad = args.clip
+        self.CRF = args['CRF']
+        self.update_embedding = args['UPDATE_EMBEDDING']
+        self.dropout_keep_prob = args['DROPOUT']
+        self.optimizer = args['OPTIMIZER']
+        self.lr = args['LR']
+        self.clip_grad = args['CLIP']
         self.tag2label = tag2label
         self.num_tags = len(tag2label)
         self.vocab = vocab
-        self.shuffle = args.shuffle
+        self.shuffle = args['SHUFFLE']
         self.model_path = paths['model_path']
         self.summary_path = paths['summary_path']
         self.logger = get_logger(paths['log_path'])
@@ -292,12 +291,9 @@ class BiLSTM_CRF(object):
         """
         label2tag = {}
         for tag, label in self.tag2label.items():
-            label2tag[label] = tag #if label != 0 else label
+            label2tag[label] = tag
 
-        with open('data_path/tag2label.pkl', 'rb') as fw:
-            tag2label = pickle.load(fw)
-
-        for name in tag2label:
+        for name in self.tag2label:
             if not name.startswith('B-'):
                 continue
             tag_cnt_crt, tag_cnt_pred, tag_cnt = 0, 0, 0
@@ -314,11 +310,3 @@ class BiLSTM_CRF(object):
             rec = tag_cnt_crt * 1.0 / tag_cnt if tag_cnt > 0 else 0
             f1 = 2 * pre * rec / (pre + rec) if pre + rec > 0 else 0
             print('{}:\tprecision:{};\trecall:{};\tF1:{};\ttag_cnt:{}.'.format(name[2:], pre, rec, f1, tag_cnt))
-
-        epoch_num = str(epoch+1) if epoch != None else 'test'
-        label_path = os.path.join(self.result_path, 'label_' + epoch_num)
-        metric_path = os.path.join(self.result_path, 'result_metric_' + epoch_num)
-        # for _ in conlleval(model_predict, label_path, metric_path):
-        #     self.logger.info(_)
-
-
