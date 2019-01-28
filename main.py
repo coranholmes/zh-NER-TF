@@ -36,19 +36,20 @@ args = parser.parse_args()
 
 
 ## get char embeddings
-word2id = read_dictionary(os.path.join('.', args.train_data, 'word2id_py2.pkl'))
+word2id = read_dictionary(os.path.join('.', args.train_data, 'word2id.pkl'))
 if args.pretrain_embedding == 'random':
     embeddings = random_embedding(word2id, args.embedding_dim)
 else:
     embedding_path = 'pretrain_embedding.npy'
     embeddings = np.array(np.load(embedding_path), dtype='float32')
-
+with open(os.path.join('.', args.train_data, 'tag2label.pkl'), 'rb') as fw:
+    tag2label = pickle.load(fw)
 
 ## read corpus and get training data
 if args.mode != 'demo':
     train_path = os.path.join('.', args.train_data, 'train_data')
     test_path = os.path.join('.', args.test_data, 'test_data')
-    train_data = read_corpus(train_path)
+    train_data = read_corpus(train_path)  # TODO: CHANGE FORMAT
     test_data = read_corpus(test_path); test_size = len(test_data)
 
 
@@ -71,19 +72,10 @@ log_path = os.path.join(result_path, "log.txt")
 paths['log_path'] = log_path
 get_logger(log_path).info(str(args))
 
-with open('data_path/tag2label.pkl', 'rb') as fw:
-    tag2label = pickle.load(fw)
-
 ## training model
 if args.mode == 'train':
     model = BiLSTM_CRF(args, embeddings, tag2label, word2id, paths, config=config)
     model.build_graph()
-
-    ## hyperparameters-tuning, split train/dev
-    # dev_data = train_data[:5000]; dev_size = len(dev_data)
-    # train_data = train_data[5000:]; train_size = len(train_data)
-    # print("train data: {0}\ndev data: {1}".format(train_size, dev_size))
-    # model.train(train=train_data, dev=dev_data)
 
     ## train model on the whole training data
     print("train data: {}".format(len(train_data)))  # no. of sentences

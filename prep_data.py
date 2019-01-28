@@ -1,7 +1,7 @@
 import json, pickle, re
 
 
-f = open('data_path/test.txt', 'r')
+f = open('data_path/train_data', 'r')
 
 tag_set = set()
 word2id = {}
@@ -68,8 +68,8 @@ word2id['<UNK>'] = new_id
 word2id['<PAD>'] = 0
 
 
-with open('data_path/word2id_my.pkl', 'wb') as fw:
+with open('data_path/word2id.pkl', 'wb') as fw:
     pickle.dump(word2id, fw)
 
-with open('data_path/tag2label_my.pkl', 'wb') as fw:
+with open('data_path/tag2label.pkl', 'wb') as fw:
     pickle.dump(tag_dic, fw)

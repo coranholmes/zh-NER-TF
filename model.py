@@ -1,5 +1,5 @@
 import numpy as np
-import os, time, sys
+import os, time, sys, pickle
 import tensorflow as tf
 from tensorflow.contrib.rnn import LSTMCell
 from tensorflow.contrib.crf import crf_log_likelihood
@@ -295,21 +295,25 @@ class BiLSTM_CRF(object):
             label2tag[label] = tag #if label != 0 else label
 
         tag_cnt_crt, tag_cnt_pred, tag_cnt = 0, 0, 0
+        with open('data_path/tag2label.pkl', 'rb') as fw:
+            tag2label = pickle.load(fw)
 
-        for name in ['LOC', 'ORG', 'PER']:
+        for name in tag2label:  # TODO: ADD TAGS
+            if not name.startswith('B-'):
+                continue
             for label_, (sent, tag) in zip(label_list, data):
                 tag_ = [label2tag[label__] for label__ in label_]
                 tag_ = tag_[:len(sent)]
-                t_ent = set(get_entity(tag, name))
-                _t_ent = set(get_entity(tag_, name))
+                t_ent = set(get_entity(tag, name[2:]))
+                _t_ent = set(get_entity(tag_, name[2:]))
                 tag_cnt += len(t_ent)
                 tag_cnt_pred += len(_t_ent)
                 tag_cnt_crt += len(t_ent.intersection(_t_ent))
 
-            pre = tag_cnt_crt * 1.0 / tag_cnt_pred
-            rec = tag_cnt_crt * 1.0 / tag_cnt
-            f1 = 2 * pre * rec / (pre + rec)
-            print('{}:\tprecision:{};\trecall:{};\tF1:{};\ttag_cnt:{}.'.format(name, pre, rec, f1, tag_cnt))
+            pre = tag_cnt_crt * 1.0 / tag_cnt_pred if tag_cnt_pred > 0 else 0
+            rec = tag_cnt_crt * 1.0 / tag_cnt if tag_cnt > 0 else 0
+            f1 = 2 * pre * rec / (pre + rec) if pre + rec > 0 else 0
+            print('{}:\tprecision:{};\trecall:{};\tF1:{};\ttag_cnt:{}.'.format(name[2:], pre, rec, f1, tag_cnt))
 
         epoch_num = str(epoch+1) if epoch != None else 'test'
         label_path = os.path.join(self.result_path, 'label_' + epoch_num)
