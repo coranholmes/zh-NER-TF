@@ -294,13 +294,13 @@ class BiLSTM_CRF(object):
         for tag, label in self.tag2label.items():
             label2tag[label] = tag #if label != 0 else label
 
-        tag_cnt_crt, tag_cnt_pred, tag_cnt = 0, 0, 0
         with open('data_path/tag2label.pkl', 'rb') as fw:
             tag2label = pickle.load(fw)
 
-        for name in tag2label:  # TODO: ADD TAGS
+        for name in tag2label:
             if not name.startswith('B-'):
                 continue
+            tag_cnt_crt, tag_cnt_pred, tag_cnt = 0, 0, 0
             for label_, (sent, tag) in zip(label_list, data):
                 tag_ = [label2tag[label__] for label__ in label_]
                 tag_ = tag_[:len(sent)]

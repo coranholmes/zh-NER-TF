@@ -49,7 +49,7 @@ with open(os.path.join('.', args.train_data, 'tag2label.pkl'), 'rb') as fw:
 if args.mode != 'demo':
     train_path = os.path.join('.', args.train_data, 'train_data')
     test_path = os.path.join('.', args.test_data, 'test_data')
-    train_data = read_corpus(train_path)  # TODO: CHANGE FORMAT
+    train_data = read_corpus(train_path)
     test_data = read_corpus(test_path); test_size = len(test_data)
 
 
