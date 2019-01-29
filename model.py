@@ -10,20 +10,20 @@ from utils import get_logger
 
 class BiLSTM_CRF(object):
     def __init__(self, args, embeddings, tag2label, vocab, paths, config):
-        self.batch_size = args['BATCH_SIZE']
-        self.epoch_num = args['EPOCH']
-        self.hidden_dim = args['HIDDEN_DIM']
+        self.batch_size = args.batch_size
+        self.epoch_num = args.epoch
+        self.hidden_dim = args.hidden_dim
         self.embeddings = embeddings
-        self.CRF = args['CRF']
-        self.update_embedding = args['UPDATE_EMBEDDING']
-        self.dropout_keep_prob = args['DROPOUT']
-        self.optimizer = args['OPTIMIZER']
-        self.lr = args['LR']
-        self.clip_grad = args['CLIP']
+        self.CRF = args.CRF
+        self.update_embedding = args.update_embedding
+        self.dropout_keep_prob = args.dropout
+        self.optimizer = args.optimizer
+        self.lr = args.lr
+        self.clip_grad = args.clip
         self.tag2label = tag2label
         self.num_tags = len(tag2label)
         self.vocab = vocab
-        self.shuffle = args['SHUFFLE']
+        self.shuffle = args.shuffle
         self.model_path = paths['model_path']
         self.summary_path = paths['summary_path']
         self.logger = get_logger(paths['log_path'])

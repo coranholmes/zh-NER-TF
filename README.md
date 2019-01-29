@@ -1,8 +1,8 @@
 ## A simple BiLSTM-CRF model for Chinese Named Entity Recognition
 
-This repository includes the code for buliding a very simple __character-based BiLSTM-CRF sequence labelling model__ for Chinese Named Entity Recognition task. Its goal is to recognize three types of Named Entity: PERSON, LOCATION and ORGANIZATION.
+This repository includes the code for buliding a very simple __character-based BiLSTM-CRF sequence labelling model__ for English Named Entity Recognition task. Its goal is to automatically recognize different types of Named Entity appearing in labelled data.
 
-This code works on __Python 3 & TensorFlow 1.2__ and the following repository [https://github.com/guillaumegenthial/sequence_tagging](https://github.com/guillaumegenthial/sequence_tagging) gives me much help.
+This code works on __Python 2.7.5 & TensorFlow 1.4.1__ and the following repository [https://github.com/guillaumegenthial/sequence_tagging](https://github.com/guillaumegenthial/sequence_tagging) gives me much help.
 
 ### model
 
@@ -18,42 +18,16 @@ The second layer, __BiLSTM layer__, can efficiently use *both past and future* i
 
 The third layer, __CRF layer__,  labels the tag for each character in one sentence. If we use Softmax layer for labelling we might get ungrammatic tag sequences beacuse Softmax could only label each position independently. We know that 'I-LOC' cannot follow 'B-PER' but Softmax don't know. Compared to Softmax layer, CRF layer could use *sentence-level tag information* and model the transition behavior of each two different tags.
 
-
-### dataset
-|    | #sentence | #PER | #LOC | #ORG |
-| :----: | :---: | :---: | :---: | :---: |
-| train  | 46364 | 17615 | 36517 | 20571 |
-| test   | 4365  | 1973  | 2877  | 1331  |
-
-It looks like a portion of [MSRA corpus](http://sighan.cs.uchicago.edu/bakeoff2006/).
+### data format
+id\001PS Vita Little Big Planet / R1 (English)\001["B-brand", "O", "O", "O", "O", "O", "O", "O"]
 
 ### train
 
-`python main.py --mode=train `
+set `ACTION='train'` in `params.py` and run `python main.py`
 
 ### test
 
-`python main.py --mode=test --demo_model=1521112368`
-
-Please set the parameter `--demo_model` to the model which you want to test. `1521112368` is the model trained by me. 
-
-An official evaluation tool: [here (click 'Instructions')](http://sighan.cs.uchicago.edu/bakeoff2006/)
-
-My test performance:
-
-| P     | R     | F     | F (PER)| F (LOC)| F (ORG)|
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| 0.8945 | 0.8752 | 0.8847 | 0.8688 | 0.9118 | 0.8515
-
-
-### demo
-
-`python main.py --mode=demo --demo_model=1521112368`
-
-You can input one Chinese sentence and the model will return the recognition result:
-
-![demo_pic](./pics/pic2.png)
-
+set `ACTION='test'` in `params.py` and run `python main.py`
 
 
 ### references
