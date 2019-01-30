@@ -5,8 +5,10 @@ from data import *
 
 
 # set hyperparameters
-tf.app.flags.DEFINE_string("train_data", "data_path", "train data source")
-tf.app.flags.DEFINE_string("test_data", "data_path", "test data source")
+# tf.app.flags.DEFINE_string("train_data", "data_path", "train data source")
+# tf.app.flags.DEFINE_string("test_data", "data_path", "test data source")
+
+# TODO change here
 tf.app.flags.DEFINE_integer("batch_size", 64, "batch size")
 tf.app.flags.DEFINE_integer("epoch", 2, "#epoch of training")
 tf.app.flags.DEFINE_integer("hidden_dim", 300, "#dim of hidden state")
@@ -20,8 +22,9 @@ tf.app.flags.DEFINE_string("pretrain_embedding", "random", "use pretrained char 
 tf.app.flags.DEFINE_integer("embedding_dim", 300, "random init char embedding_dim")
 tf.app.flags.DEFINE_boolean("shuffle", True, "shuffle training data before each epoch")
 tf.app.flags.DEFINE_integer("min_count", 2, "min_count for vocabulary building")
-tf.app.flags.DEFINE_string("action", "train", "train/test")
-tf.app.flags.DEFINE_string("tables", "train_data,test_data", "tables separated by comma ")
+tf.app.flags.DEFINE_string("action", "test", "train/test")
+tf.app.flags.DEFINE_string("tables", "data_path/train_data,data_path/test_data", "tables separated by comma ")
+tf.app.flags.DEFINE_string('bucket', 'data_path_save',"Directory where to write event logs and checkpoint.")
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -41,15 +44,11 @@ else:
 
 
 # read corpus and get training data
-train_path = os.path.join('.', FLAGS.train_data, 'train_data')
-test_path = os.path.join('.', FLAGS.test_data, 'test_data')
-train_data = read_corpus(train_path)
-test_data = read_corpus(test_path)
-test_size = len(test_data)
+train_path, test_path = FLAGS.tables.split(',')
 
 # paths setting
 paths = {}
-output_path = os.path.join('.', FLAGS.train_data+"_save")
+output_path = os.path.join('.', FLAGS.bucket)
 if not os.path.exists(output_path): os.makedirs(output_path)
 summary_path = os.path.join(output_path, "summaries")
 paths['summary_path'] = summary_path
@@ -63,6 +62,8 @@ paths['result_path'] = result_path
 if not os.path.exists(result_path): os.makedirs(result_path)
 log_path = os.path.join(result_path, "log.txt")
 paths['log_path'] = log_path
+paths['train_path'] = train_path
+paths['test_path'] = test_path
 # get_logger(log_path).info(str(FLAGS))
 
 # training model
@@ -71,8 +72,8 @@ if FLAGS.action == 'train':
     model.build_graph()
 
     ## train model on the whole training data
-    print("train data: {}".format(len(train_data)))  # no. of sentences
-    model.train(train=train_data, dev=test_data)  # use test_data as the dev_data to see overfitting phenomena
+    # print("train data: {}".format(train_size))  # no. of sentences
+    model.train()  # use test_data as the dev_data to see overfitting phenomena
 
 # testing model
 elif FLAGS.action == 'test':
@@ -81,5 +82,5 @@ elif FLAGS.action == 'test':
     paths['model_path'] = ckpt_file
     model = BiLSTM_CRF(FLAGS, embeddings, tag2label, word2id, paths, config=config)
     model.build_graph()
-    print("test data: {}".format(test_size))
-    model.test(test_data)
+    # print("test data: {}".format(test_size))
+    model.test()

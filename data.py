@@ -1,8 +1,38 @@
 import sys, pickle, os, random, io, codecs, json, re
 import numpy as np
+import tensorflow as tf
 
 ## tags, BIO
 
+
+def read_meta(table_name):
+    """read the size information of the table, only one record is read out
+
+        """
+    filename_queue = tf.train.string_input_producer([table_name], num_epochs=1)
+
+    reader = tf.TextLineReader()
+    key, value = reader.read(filename_queue)
+    # record_defaults = [[0]]
+    # col1 = tf.decode_csv(value, record_defaults=record_defaults)
+    init = tf.initialize_all_variables()
+
+    with tf.Session() as sess:
+        sess.run(init)
+        sess.run(tf.initialize_local_variables())
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord)
+        data_size = 0
+        try:
+            while not coord.should_stop():
+                values = sess.run([value])
+                data_size += len(values)
+        except tf.errors.OutOfRangeError:
+            pass
+        finally:
+            coord.request_stop()
+            coord.join(threads)
+        return data_size
 
 def read_corpus(lines):
     """

@@ -30,4 +30,6 @@ def main():
         coord.join(threads)
 
 if __name__ == "__main__":
-    main()
+    # main()
+    a = read_meta("data_path/test_data")
+    print(a)

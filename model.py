@@ -28,6 +28,8 @@ class BiLSTM_CRF(object):
         self.summary_path = paths['summary_path']
         self.logger = get_logger(paths['log_path'])
         self.result_path = paths['result_path']
+        self.train_path = paths['train_path']
+        self.test_path = paths['test_path']
         self.config = config
 
     def build_graph(self):
@@ -42,16 +44,18 @@ class BiLSTM_CRF(object):
         self.init_op()
 
     def input_train_op(self):
-        filename_queue = tf.train.string_input_producer(["data_path/test_data"], shuffle=False)  # TODO change
+        filename_queue = tf.train.string_input_producer([self.train_path], shuffle=False)
         reader = tf.TextLineReader()
         key, value = reader.read_up_to(filename_queue, num_records=self.batch_size)
         self.train_data_raw = tf.train.batch([value], batch_size=self.batch_size, capacity=64000, enqueue_many=True,
                                       allow_smaller_final_batch=True)
 
     def input_test_op(self):
-        filename_queue = tf.train.string_input_producer(["data_path/test_data"], shuffle=False)  # TODO change
+        filename_queue = tf.train.string_input_producer([self.test_path], shuffle=False)
         reader = tf.TextLineReader()
-        key, self.test_data_raw = reader(filename_queue)
+        key, value = reader.read_up_to(filename_queue, num_records=self.batch_size)
+        self.test_data_raw = tf.train.batch([value], batch_size=self.batch_size, capacity=64000, enqueue_many=True,
+                                      allow_smaller_final_batch=True)
 
 
     def add_placeholders(self):
@@ -158,13 +162,18 @@ class BiLSTM_CRF(object):
         self.merged = tf.summary.merge_all()
         self.file_writer = tf.summary.FileWriter(self.summary_path, sess.graph)
 
-    def train(self, train, dev):
+    def train(self):
         """
 
         :param train:
         :param dev:
         :return:
         """
+
+        # self.train_size = read_meta(self.train_path)
+        # self.test_size = read_meta(self.test_path)
+        # print("train data: {}".format(self.train_size))
+
         saver = tf.train.Saver(tf.global_variables())
 
         with tf.Session(config=self.config) as sess:
@@ -175,17 +184,17 @@ class BiLSTM_CRF(object):
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(sess, coord)
             for epoch in range(self.epoch_num):
-                self.run_one_epoch(sess, train, dev, self.tag2label, epoch, saver)
+                self.run_one_epoch(sess, self.tag2label, epoch, saver)
             coord.request_stop()
             coord.join(threads)
 
-    def test(self, test):
+    def test(self):
+        # self.test_size = read_meta(self.test_path)
         saver = tf.train.Saver()
         with tf.Session(config=self.config) as sess:
             self.logger.info('=========== testing ===========')
             saver.restore(sess, self.model_path)
-            label_list, seq_len_list = self.dev_one_epoch(sess, test)
-            self.evaluate(label_list, seq_len_list, test)
+            self.dev_one_epoch(sess)
 
     def demo_one(self, sess, sent):
         """
@@ -204,7 +213,7 @@ class BiLSTM_CRF(object):
         tag = [label2tag[label] for label in label_list[0]]
         return tag
 
-    def run_one_epoch(self, sess, train, dev, tag2label, epoch, saver):
+    def run_one_epoch(self, sess, tag2label, epoch, saver):
         """
 
         :param sess:
@@ -215,46 +224,51 @@ class BiLSTM_CRF(object):
         :param saver:
         :return:
         """
-        # num_batches = (len(train) + self.batch_size - 1) // self.batch_size  # no. of batches
-        num_batches = 5
+
+        # num_batches = self.train_size / self.batch_size if self.train_size > self.batch_size else 1
+        num_batches = 78
 
         # step is the index of batch, seqs is the list of sentences
-        for step in range(num_batches):
-            train_data_raw = sess.run([self.train_data_raw])
-            train_data = read_corpus(train_data_raw)
-            start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            seqs = []
-            labels = []
-            for (sent_, tag_) in train_data:
-                sent_ = sentence2id(sent_, self.vocab)
-                label_ = []
-                for tag in tag_:
-                    if tag2label.has_key(tag):
-                        label_.append(tag2label[tag])
-                    else:
-                        label_.append(tag2label["O"])
-                seqs.append(sent_)
-                labels.append(label_)
+        try:
+            for step in range(num_batches):
+                train_data_raw = sess.run([self.train_data_raw])
+                train_data = read_corpus(train_data_raw)
+                start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                seqs = []
+                labels = []
+                for (sent_, tag_) in train_data:
+                    sent_ = sentence2id(sent_, self.vocab)
+                    label_ = []
+                    for tag in tag_:
+                        if tag2label.has_key(tag):
+                            label_.append(tag2label[tag])
+                        else:
+                            label_.append(tag2label["O"])
+                    seqs.append(sent_)
+                    labels.append(label_)
 
-            sys.stdout.write(' processing: {} batch / {} batches.'.format(step + 1, num_batches) + '\r')
-            step_num = epoch * num_batches + step + 1
-            feed_dict, _ = self.get_feed_dict(seqs, labels, self.lr, self.dropout_keep_prob)
+                sys.stdout.write(' processing: {} batch / {} batches.'.format(step + 1, num_batches) + '\r')
+                step_num = epoch * num_batches + step + 1
+                feed_dict, _ = self.get_feed_dict(seqs, labels, self.lr, self.dropout_keep_prob)
 
-            _, loss_train, summary, step_num_ = sess.run([self.train_op, self.loss, self.merged, self.global_step],
-                                                         feed_dict=feed_dict)
-            # if step + 1 == 1 or (step + 1) % 300 == 0 or step + 1 == num_batches:
-            self.logger.info(
-                    '{} epoch {}, batch {}, loss: {:.4}, global_step: {}'.format(start_time, epoch + 1, step + 1,
-                                                                                loss_train, step_num))
+                _, loss_train, summary, step_num_ = sess.run([self.train_op, self.loss, self.merged, self.global_step],
+                                                             feed_dict=feed_dict)
+                # if step + 1 == 1 or (step + 1) % 300 == 0 or step + 1 == num_batches:
+                self.logger.info(
+                        '{} epoch {}, batch {}, loss: {:.4}, global_step: {}'.format(start_time, epoch + 1, step + 1,
+                                                                                    loss_train, step_num))
 
-            self.file_writer.add_summary(summary, step_num)
+                self.file_writer.add_summary(summary, step_num)
 
-            if step + 1 == num_batches:  # store results after last batch
-                saver.save(sess, self.model_path, global_step=step_num)
+                if step + 1 == num_batches:  # store results after last batch
+                    saver.save(sess, self.model_path, global_step=step_num)
+        except tf.errors.OutOfRangeError:
+            pass
 
         self.logger.info('===========validation / test===========')
-        label_list_dev, seq_len_list_dev = self.dev_one_epoch(sess, dev)
-        self.evaluate(label_list_dev, seq_len_list_dev, dev, epoch)
+        # print("train data: {}".format(self.test_size))
+        self.dev_one_epoch(sess, epoch)
+        # self.evaluate(label_list_dev, seq_len_list_dev, dev, epoch)
 
     def get_feed_dict(self, seqs, labels=None, lr=None, dropout=None):
         """
@@ -279,22 +293,39 @@ class BiLSTM_CRF(object):
 
         return feed_dict, seq_len_list
 
-    def dev_one_epoch(self, sess, dev):
+    def dev_one_epoch(self, sess, epoch=None):
         """
 
         :param sess:
         :param dev:
         :return:
         """
-        test_data_raw = sess.run([self.test_data_raw])
-        test_data = read_corpus([test_data_raw])
+        # num_batches = self.test_size / self.batch_size if self.test_size > self.batch_size else 1
+        num_batches = 2  # TODO 15
 
-        label_list, seq_len_list = [], []
-        for seqs, labels in test_data:
-            label_list_, seq_len_list_ = self.predict_one_batch(sess, seqs)
-            label_list.extend(label_list_)
-            seq_len_list.extend(seq_len_list_)
-        return label_list, seq_len_list
+        # step is the index of batch, seqs is the list of sentences
+        pred_label_list, seq_len_list, label_list, seqs_list = [], [], [], []
+        try:
+            for step in range(num_batches):
+                test_data_raw = sess.run([self.test_data_raw])
+                test_data = read_corpus(test_data_raw)
+
+                seqs, labels = [], []
+                for (sent_, tag_) in test_data:
+                    sent_ = sentence2id(sent_, self.vocab)
+                    seqs.append(sent_)
+                    labels.append(tag_)
+
+                predict_label_list_, seq_len_list_ = self.predict_one_batch(sess, seqs)
+                pred_label_list.extend(predict_label_list_)
+                seq_len_list.extend(seq_len_list_)
+                label_list.extend(labels)
+                seqs_list.extend(seqs)
+        except tf.errors.OutOfRangeError:
+            pass
+
+        self.evaluate(pred_label_list, seq_len_list, zip(seqs_list, label_list), epoch)
+        # return pred_label_list, seq_len_list
 
     def predict_one_batch(self, sess, seqs):
         """
@@ -328,6 +359,7 @@ class BiLSTM_CRF(object):
         :param epoch:
         :return:
         """
+
         label2tag = {}
         for tag, label in self.tag2label.items():
             label2tag[label] = tag
@@ -348,4 +380,5 @@ class BiLSTM_CRF(object):
             pre = tag_cnt_crt * 1.0 / tag_cnt_pred if tag_cnt_pred > 0 else 0
             rec = tag_cnt_crt * 1.0 / tag_cnt if tag_cnt > 0 else 0
             f1 = 2 * pre * rec / (pre + rec) if pre + rec > 0 else 0
-            print('{}:\tprecision:{};\trecall:{};\tF1:{};\ttag_cnt:{}.'.format(name[2:], pre, rec, f1, tag_cnt))
+            if tag_cnt != 0:
+                print('{}:\tprecision:{};\trecall:{};\tF1:{};\ttag_cnt:{}.'.format(name[2:], pre, rec, f1, tag_cnt))
