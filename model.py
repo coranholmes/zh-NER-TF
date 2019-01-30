@@ -194,7 +194,11 @@ class BiLSTM_CRF(object):
         with tf.Session(config=self.config) as sess:
             self.logger.info('=========== testing ===========')
             saver.restore(sess, self.model_path)
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(sess, coord)
             self.dev_one_epoch(sess)
+            coord.request_stop()
+            coord.join(threads)
 
     def demo_one(self, sess, sent):
         """
