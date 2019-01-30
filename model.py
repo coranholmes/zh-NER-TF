@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.contrib.rnn import LSTMCell
 from tensorflow.contrib.crf import crf_log_likelihood
 from tensorflow.contrib.crf import viterbi_decode
-from data import pad_sequences, batch_yield, get_entity
+from data import *
 from utils import get_logger
 
 
@@ -32,12 +32,27 @@ class BiLSTM_CRF(object):
 
     def build_graph(self):
         self.add_placeholders()
+        self.input_train_op()
+        self.input_test_op()
         self.lookup_layer_op()
         self.biLSTM_layer_op()
         self.softmax_pred_op()
         self.loss_op()
         self.trainstep_op()
         self.init_op()
+
+    def input_train_op(self):
+        filename_queue = tf.train.string_input_producer(["data_path/test_data"], shuffle=False)  # TODO change
+        reader = tf.TextLineReader()
+        key, value = reader.read_up_to(filename_queue, num_records=self.batch_size)
+        self.train_data_raw = tf.train.batch([value], batch_size=self.batch_size, capacity=64000, enqueue_many=True,
+                                      allow_smaller_final_batch=True)
+
+    def input_test_op(self):
+        filename_queue = tf.train.string_input_producer(["data_path/test_data"], shuffle=False)  # TODO change
+        reader = tf.TextLineReader()
+        key, self.test_data_raw = reader(filename_queue)
+
 
     def add_placeholders(self):
         self.word_ids = tf.placeholder(tf.int32, shape=[None, None], name="word_ids")
@@ -154,10 +169,15 @@ class BiLSTM_CRF(object):
 
         with tf.Session(config=self.config) as sess:
             sess.run(self.init_op)
+            # sess.run(tf.local_variables_initializer())
             self.add_summary(sess)
 
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(sess, coord)
             for epoch in range(self.epoch_num):
                 self.run_one_epoch(sess, train, dev, self.tag2label, epoch, saver)
+            coord.request_stop()
+            coord.join(threads)
 
     def test(self, test):
         saver = tf.train.Saver()
@@ -195,20 +215,36 @@ class BiLSTM_CRF(object):
         :param saver:
         :return:
         """
-        num_batches = (len(train) + self.batch_size - 1) // self.batch_size  # no. of batches
+        # num_batches = (len(train) + self.batch_size - 1) // self.batch_size  # no. of batches
+        num_batches = 5
 
-        start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        batches = batch_yield(train, self.batch_size, self.vocab, self.tag2label, shuffle=self.shuffle)
-        for step, (seqs, labels) in enumerate(batches):  # step is the index of batch, seqs is the list of sentences
+        # step is the index of batch, seqs is the list of sentences
+        for step in range(num_batches):
+            train_data_raw = sess.run([self.train_data_raw])
+            train_data = read_corpus(train_data_raw)
+            start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            seqs = []
+            labels = []
+            for (sent_, tag_) in train_data:
+                sent_ = sentence2id(sent_, self.vocab)
+                label_ = []
+                for tag in tag_:
+                    if tag2label.has_key(tag):
+                        label_.append(tag2label[tag])
+                    else:
+                        label_.append(tag2label["O"])
+                seqs.append(sent_)
+                labels.append(label_)
 
             sys.stdout.write(' processing: {} batch / {} batches.'.format(step + 1, num_batches) + '\r')
             step_num = epoch * num_batches + step + 1
             feed_dict, _ = self.get_feed_dict(seqs, labels, self.lr, self.dropout_keep_prob)
+
             _, loss_train, summary, step_num_ = sess.run([self.train_op, self.loss, self.merged, self.global_step],
                                                          feed_dict=feed_dict)
-            if step + 1 == 1 or (step + 1) % 300 == 0 or step + 1 == num_batches:
-                self.logger.info(
-                    '{} epoch {}, step {}, loss: {:.4}, global_step: {}'.format(start_time, epoch + 1, step + 1,
+            # if step + 1 == 1 or (step + 1) % 300 == 0 or step + 1 == num_batches:
+            self.logger.info(
+                    '{} epoch {}, batch {}, loss: {:.4}, global_step: {}'.format(start_time, epoch + 1, step + 1,
                                                                                 loss_train, step_num))
 
             self.file_writer.add_summary(summary, step_num)
@@ -250,8 +286,11 @@ class BiLSTM_CRF(object):
         :param dev:
         :return:
         """
+        test_data_raw = sess.run([self.test_data_raw])
+        test_data = read_corpus([test_data_raw])
+
         label_list, seq_len_list = [], []
-        for seqs, labels in batch_yield(dev, self.batch_size, self.vocab, self.tag2label, shuffle=False):
+        for seqs, labels in test_data:
             label_list_, seq_len_list_ = self.predict_one_batch(sess, seqs)
             label_list.extend(label_list_)
             seq_len_list.extend(seq_len_list_)

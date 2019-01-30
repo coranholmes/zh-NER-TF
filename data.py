@@ -4,16 +4,14 @@ import numpy as np
 ## tags, BIO
 
 
-def read_corpus(corpus_path):
+def read_corpus(lines):
     """
     read corpus and return the list of samples
     :param corpus_path:
     :return: data
     """
     data = []
-    with codecs.open(corpus_path, encoding='utf-8') as fr:
-        lines = fr.readlines()
-    for line in lines:
+    for line in lines[0]:
         arr = line.split('\001')
         if len(arr) != 3:
             continue
