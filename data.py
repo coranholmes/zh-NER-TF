@@ -13,13 +13,11 @@ def read_meta(table_name):
 
     reader = tf.TextLineReader()
     key, value = reader.read(filename_queue)
-    # record_defaults = [[0]]
-    # col1 = tf.decode_csv(value, record_defaults=record_defaults)
-    init = tf.initialize_all_variables()
+    init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
     with tf.Session() as sess:
-        sess.run(init)
-        sess.run(tf.initialize_local_variables())
+        sess.run(init_op)
+
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
         data_size = 0

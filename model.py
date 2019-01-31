@@ -170,15 +170,16 @@ class BiLSTM_CRF(object):
         :return:
         """
 
-        # self.train_size = read_meta(self.train_path)
-        # self.test_size = read_meta(self.test_path)
-        # print("train data: {}".format(self.train_size))
+        self.train_size = read_meta(self.train_path)
+        self.test_size = read_meta(self.test_path)
+        print('train_data_size:', self.train_size)
+        print('test_data_size:', self.test_size)
 
         saver = tf.train.Saver(tf.global_variables())
 
         with tf.Session(config=self.config) as sess:
             sess.run(self.init_op)
-            # sess.run(tf.local_variables_initializer())
+            sess.run(tf.local_variables_initializer())
             self.add_summary(sess)
 
             coord = tf.train.Coordinator()
@@ -189,10 +190,14 @@ class BiLSTM_CRF(object):
             coord.join(threads)
 
     def test(self):
-        # self.test_size = read_meta(self.test_path)
+        self.test_size = read_meta(self.test_path)
+        print('test_data_size:', self.test_size)
+
         saver = tf.train.Saver()
         with tf.Session(config=self.config) as sess:
             self.logger.info('=========== testing ===========')
+            sess.run(self.init_op)
+            sess.run(tf.local_variables_initializer())  # todo: what the fuck???
             saver.restore(sess, self.model_path)
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(sess, coord)
@@ -229,45 +234,45 @@ class BiLSTM_CRF(object):
         :return:
         """
 
-        # num_batches = self.train_size / self.batch_size if self.train_size > self.batch_size else 1
-        num_batches = 78
+        num_batches = self.train_size / self.batch_size if self.train_size > self.batch_size else 1
+        print('num_batches:', num_batches)
+        # num_batches = 78
 
         # step is the index of batch, seqs is the list of sentences
-        try:
-            for step in range(num_batches):
-                train_data_raw = sess.run([self.train_data_raw])
-                train_data = read_corpus(train_data_raw)
-                start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                seqs = []
-                labels = []
-                for (sent_, tag_) in train_data:
-                    sent_ = sentence2id(sent_, self.vocab)
-                    label_ = []
-                    for tag in tag_:
-                        if tag2label.has_key(tag):
-                            label_.append(tag2label[tag])
-                        else:
-                            label_.append(tag2label["O"])
-                    seqs.append(sent_)
-                    labels.append(label_)
 
-                sys.stdout.write(' processing: {} batch / {} batches.'.format(step + 1, num_batches) + '\r')
-                step_num = epoch * num_batches + step + 1
-                feed_dict, _ = self.get_feed_dict(seqs, labels, self.lr, self.dropout_keep_prob)
+        for step in range(num_batches):
+            train_data_raw = sess.run([self.train_data_raw])
+            train_data = read_corpus(train_data_raw)
+            start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            seqs = []
+            labels = []
+            for (sent_, tag_) in train_data:
+                sent_ = sentence2id(sent_, self.vocab)
+                label_ = []
+                for tag in tag_:
+                    if tag2label.has_key(tag):
+                        label_.append(tag2label[tag])
+                    else:
+                        label_.append(tag2label["O"])
+                seqs.append(sent_)
+                labels.append(label_)
 
-                _, loss_train, summary, step_num_ = sess.run([self.train_op, self.loss, self.merged, self.global_step],
-                                                             feed_dict=feed_dict)
-                # if step + 1 == 1 or (step + 1) % 300 == 0 or step + 1 == num_batches:
-                self.logger.info(
-                        '{} epoch {}, batch {}, loss: {:.4}, global_step: {}'.format(start_time, epoch + 1, step + 1,
-                                                                                    loss_train, step_num))
+            sys.stdout.write(' processing: {} batch / {} batches.'.format(step + 1, num_batches) + '\r')
+            step_num = epoch * num_batches + step + 1
+            feed_dict, _ = self.get_feed_dict(seqs, labels, self.lr, self.dropout_keep_prob)
 
-                self.file_writer.add_summary(summary, step_num)
+            _, loss_train, summary, step_num_ = sess.run([self.train_op, self.loss, self.merged, self.global_step],
+                                                         feed_dict=feed_dict)
+            # if step + 1 == 1 or (step + 1) % 300 == 0 or step + 1 == num_batches:
+            self.logger.info(
+                    '{} epoch {}, batch {}, loss: {:.4}, global_step: {}'.format(start_time, epoch + 1, step + 1,
+                                                                                loss_train, step_num))
 
-                if step + 1 == num_batches:  # store results after last batch
-                    saver.save(sess, self.model_path, global_step=step_num)
-        except tf.errors.OutOfRangeError:
-            pass
+            self.file_writer.add_summary(summary, step_num)
+
+            if step + 1 == num_batches:  # store results after last batch
+                saver.save(sess, self.model_path, global_step=step_num)
+
 
         self.logger.info('===========validation / test===========')
         # print("train data: {}".format(self.test_size))
@@ -304,29 +309,28 @@ class BiLSTM_CRF(object):
         :param dev:
         :return:
         """
-        # num_batches = self.test_size / self.batch_size if self.test_size > self.batch_size else 1
-        num_batches = 2  # TODO 15
+        num_batches = self.test_size / self.batch_size if self.test_size > self.batch_size else 1
+        # num_batches = 2  # TODO 15
 
         # step is the index of batch, seqs is the list of sentences
         pred_label_list, seq_len_list, label_list, seqs_list = [], [], [], []
-        try:
-            for step in range(num_batches):
-                test_data_raw = sess.run([self.test_data_raw])
-                test_data = read_corpus(test_data_raw)
 
-                seqs, labels = [], []
-                for (sent_, tag_) in test_data:
-                    sent_ = sentence2id(sent_, self.vocab)
-                    seqs.append(sent_)
-                    labels.append(tag_)
+        for step in range(num_batches):
+            test_data_raw = sess.run([self.test_data_raw])
+            test_data = read_corpus(test_data_raw)
 
-                predict_label_list_, seq_len_list_ = self.predict_one_batch(sess, seqs)
-                pred_label_list.extend(predict_label_list_)
-                seq_len_list.extend(seq_len_list_)
-                label_list.extend(labels)
-                seqs_list.extend(seqs)
-        except tf.errors.OutOfRangeError:
-            pass
+            seqs, labels = [], []
+            for (sent_, tag_) in test_data:
+                sent_ = sentence2id(sent_, self.vocab)
+                seqs.append(sent_)
+                labels.append(tag_)
+
+            predict_label_list_, seq_len_list_ = self.predict_one_batch(sess, seqs)
+            pred_label_list.extend(predict_label_list_)
+            seq_len_list.extend(seq_len_list_)
+            label_list.extend(labels)
+            seqs_list.extend(seqs)
+
 
         self.evaluate(pred_label_list, seq_len_list, zip(seqs_list, label_list), epoch)
         # return pred_label_list, seq_len_list

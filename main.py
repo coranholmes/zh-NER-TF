@@ -23,7 +23,7 @@ tf.app.flags.DEFINE_integer("embedding_dim", 300, "random init char embedding_di
 tf.app.flags.DEFINE_boolean("shuffle", True, "shuffle training data before each epoch")
 tf.app.flags.DEFINE_integer("min_count", 2, "min_count for vocabulary building")
 tf.app.flags.DEFINE_string("action", "test", "train/test")
-tf.app.flags.DEFINE_string("tables", "data_path/train_data,data_path/test_data", "tables separated by comma ")
+tf.app.flags.DEFINE_string("tables", "data_path/train_data,data_path/test_data2", "tables separated by comma ")
 tf.app.flags.DEFINE_string('bucket', 'data_path_save',"Directory where to write event logs and checkpoint.")
 
 FLAGS = tf.app.flags.FLAGS
