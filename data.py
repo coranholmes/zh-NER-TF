@@ -36,12 +36,10 @@ def sentence2id(sent, word2id):
     """
     sentence_id = []
     for word in sent:
-        if word.isdigit():
-            word = '<NUM>'
-        elif ('\u0041' <= word <= '\u005a') or ('\u0061' <= word <= '\u007a'):
-            word = '<ENG>'
         if word not in word2id:
             word = '<UNK>'
+        else:
+            word = normalize_words(word)
         sentence_id.append(word2id[word])
     return sentence_id
 
