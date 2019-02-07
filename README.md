@@ -23,11 +23,11 @@ id\001PS Vita Little Big Planet / R1 (English)\001["B-brand", "O", "O", "O", "
 
 ### train
 
-set `ACTION='train'` in `params.py` and run `python main.py`
+run `python main.py`
 
 ### test
 
-set `ACTION='test'` in `params.py` and run `python main.py`
+run `python main.py --action test`
 
 
 ### references
