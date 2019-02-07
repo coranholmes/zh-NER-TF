@@ -47,6 +47,7 @@ def read_corpus(lines):
         tag_ = json.loads(arr[2])
         tag_ = [str(i) for i in tag_]
         if len(sent_) > 100:
+            print("too long title")
             continue  # delete those too long sentences
         if len(sent_) == len(tag_):
             data.append((sent_, tag_))
@@ -166,8 +167,8 @@ def normalize_words(word):
 def dict_build(corpus_path, min_count):
 
     # check whether the dictionaries are already built
-    word_path = os.path.join('.', corpus_path, 'word2id.pkl')
-    tag_path = os.path.join('.', corpus_path, 'tag2label.pkl')
+    word_path = os.path.join(corpus_path, 'word2id.pkl')
+    tag_path = os.path.join(corpus_path, 'tag2label.pkl')
     if os.path.exists(word_path) and os.path.exists(tag_path):
         print("Loading vocabulary and tag dictionary.")
         with open(word_path, 'rb') as fr:
@@ -177,7 +178,7 @@ def dict_build(corpus_path, min_count):
             tag2label = pickle.load(fr)
     else:
         print("Building vocabulary and tag dictionary.")
-        f = open(os.path.join('.', corpus_path, 'train_data'), 'r')
+        f = open(os.path.join(corpus_path, 'train_data'), 'r')  # TODO CHANGE
 
         tag_set = set()
         word2id = {}

@@ -45,14 +45,14 @@ class BiLSTM_CRF(object):
 
     def input_train_op(self):
         filename_queue = tf.train.string_input_producer([self.train_path], shuffle=False)
-        reader = tf.TextLineReader()
+        reader = tf.TableRecordReader()
         key, value = reader.read_up_to(filename_queue, num_records=self.batch_size)
         self.train_data_raw = tf.train.batch([value], batch_size=self.batch_size, capacity=64000, enqueue_many=True,
                                       allow_smaller_final_batch=True)
 
     def input_test_op(self):
         filename_queue = tf.train.string_input_producer([self.test_path], shuffle=False)
-        reader = tf.TextLineReader()
+        reader = tf.TableRecordReader()
         key, value = reader.read_up_to(filename_queue, num_records=self.batch_size)
         self.test_data_raw = tf.train.batch([value], batch_size=self.batch_size, capacity=64000, enqueue_many=True,
                                       allow_smaller_final_batch=True)

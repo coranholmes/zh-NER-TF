@@ -6,7 +6,7 @@ def main():
     batch_size = 4
     filename_queue = tf.train.string_input_producer(["data_path/test_data"],  shuffle=False)
     reader = tf.TextLineReader()
-    key, value = reader.read_up_to(filename_queue, num_records=batch_size)
+    key, value = reader.read(filename_queue)
     batch_values = tf.train.batch([value], batch_size=batch_size, capacity=64000, enqueue_many=True)
     data_len = read_meta("data_path/test_data")
 
